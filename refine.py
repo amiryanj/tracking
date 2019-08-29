@@ -8,32 +8,32 @@ run_nbr = 1
 
 parser = PeTrackParser()
 main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
-p_leg_red, t_leg_red = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-p_head_red, t_head_red = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-p_leg_yellow, t_leg_yellow = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-p_head_yellow, t_head_yellow = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
 
-assert len(t_leg_red) == len(t_head_red)
-assert len(t_leg_yellow) == len(t_head_yellow)
-for ii, Ti in enumerate(t_leg_red):
-    assert len(Ti) == len(t_head_red[ii]), "mismatch - reds - %d" % ii
-for ii, Ti in enumerate(t_leg_yellow):
-    # if ii == 50: continue
-    # print('# legs[%d]= ' % ii , len(t_leg_yellow[ii]))
-    # print('# heads[%d]= ' % ii , len(t_head_yellow[ii]))
-    assert len(Ti) == len(t_head_yellow[ii]), "mismatch - yellows - %d" % ii
+# p_leg_red, t_leg_red = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# p_head_red, t_head_red = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# p_leg_yellow, t_leg_yellow = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# p_head_yellow, t_head_yellow = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# t_data_red = t_leg_red
+# t_data_yellow = t_head_yellow
+# print('#red =', len(t_data_red), ' #yellow =', len(t_data_yellow))
+# p_legs = list() + p_leg_red + p_leg_yellow
+# p_heads = list() + p_head_red + p_head_yellow
+# t_data = list() + t_data_red + t_data_yellow
 
-# p_head_red, t_head_red = parser.load('C:/Users/Javad/Dropbox/PAMELA data/new_cut_video/S1/run1/S1_run1_red_height0.txt')
-# p_leg_yellow, t_leg_yellow = parser.load('C:/Users/Javad/Dropbox/PAMELA data/new_cut_video/S1/run1/S1_run1_yellow_height170.txt')
-# p_head_yellow, t_head_yellow = parser.load('C:/Users/Javad/Dropbox/PAMELA data/new_cut_video/S1/run1/S1_run1_yellow_height0.txt')
+# assert len(t_leg_red) == len(t_head_red)
+# assert len(t_leg_yellow) == len(t_head_yellow)
+# for ii, Ti in enumerate(t_leg_red):
+#     assert len(Ti) == len(t_head_red[ii]), "mismatch - reds - %d" % ii
+# for ii, Ti in enumerate(t_leg_yellow):
+#     # print('# legs[%d]= ' % ii , len(t_leg_yellow[ii]))
+#     # print('# heads[%d]= ' % ii , len(t_head_yellow[ii]))
+#     assert len(Ti) == len(t_head_yellow[ii]), "mismatch - yellows - %d" % ii
 
-t_data_red = t_leg_red
-t_data_yellow = t_head_yellow
-print('#red =', len(t_data_red), ' #yellow =', len(t_data_yellow))
+main_dir = '/home/cyrus/Dropbox/PAMELA data/new_cut_video'
+p_heads, t_head = parser.load(main_dir + '/S%d/run%d/S%d_run%d-heads.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+p_legs, t_leg = parser.load(main_dir + '/S%d/run%d/S%d_run%d-legs.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+t_data = t_head
 
-p_legs = list() + p_leg_red + p_leg_yellow
-p_heads = list() + p_head_red + p_head_yellow
-t_data = list() + t_data_red + t_data_yellow
 p_legs_out = p_legs.copy()
 p_heads_out = p_heads.copy()
 t_out = t_data.copy()

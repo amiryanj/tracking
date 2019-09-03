@@ -3,45 +3,45 @@ import cv2
 from parse_utils import PeTrackParser
 from DEFINITIONS import *
 
-scn_nbr = 8
+scn_nbr = 2
 run_nbr = 1
 
 parser = PeTrackParser()
 main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
 
-# p_leg_red, t_leg_red = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-# p_head_red, t_head_red = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-# p_leg_yellow, t_leg_yellow = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-# p_head_yellow, t_head_yellow = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# p_leg_red, t_leg_red, ids_red = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# p_head_red, t_head_red, _ = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# p_leg_yellow, t_leg_yellow, ids_yellow = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# p_head_yellow, t_head_yellow, _ = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
 # t_data_red = t_leg_red
 # t_data_yellow = t_head_yellow
 # print('#red =', len(t_data_red), ' #yellow =', len(t_data_yellow))
 # p_legs = list() + p_leg_red + p_leg_yellow
 # p_heads = list() + p_head_red + p_head_yellow
 # t_data = list() + t_data_red + t_data_yellow
+# ids = [-1] + ids_red + ids_yellow
 
-# assert len(t_leg_red) == len(t_head_red)
-# assert len(t_leg_yellow) == len(t_head_yellow)
-# for ii, Ti in enumerate(t_leg_red):
-#     assert len(Ti) == len(t_head_red[ii]), "mismatch - reds - %d" % ii
-# for ii, Ti in enumerate(t_leg_yellow):
-#     # print('# legs[%d]= ' % ii , len(t_leg_yellow[ii]))
-#     # print('# heads[%d]= ' % ii , len(t_head_yellow[ii]))
-#     assert len(Ti) == len(t_head_yellow[ii]), "mismatch - yellows - %d" % ii
-
-main_dir = '/home/cyrus/Dropbox/PAMELA data/new_cut_video'
-p_heads, t_head = parser.load(main_dir + '/S%d/run%d/S%d_run%d-heads.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-p_legs, t_leg = parser.load(main_dir + '/S%d/run%d/S%d_run%d-legs.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# main_dir = '/home/cyrus/Dropbox/PAMELA data/new_cut_video'
+main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
+p_heads, t_head, ids = parser.load(main_dir + '/S%d/run%d/S%d_run%d-heads.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+p_legs, t_leg, _ = parser.load(main_dir + '/S%d/run%d/S%d_run%d-legs.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
 t_data = t_head
+
+assert len(p_legs) == len(p_heads), "mismatch - heads and legs"
+assert len(t_data) == len(p_legs), "mismatch - times and locs"
+for ii, Ti in enumerate(t_data):
+    assert len(Ti) == len(p_heads[ii]), "mismatch - heads - %d" % ii
+    assert len(Ti) == len(p_legs[ii]), "mismatch - legs - %d" % ii
+
 
 p_legs_out = p_legs.copy()
 p_heads_out = p_heads.copy()
 t_out = t_data.copy()
 
 cap = cv2.VideoCapture(main_dir + '/S%d/S%d_run%d0001-100000-undistort.mp4' %(scn_nbr, scn_nbr, run_nbr))
-output_heads = main_dir + '/S%d/run%d/S%d_run%d-heads.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
-output_legs = main_dir + '/S%d/run%d/S%d_run%d-legs.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
-output_confirm_ids = main_dir + '/S%d/run%d/S%d_run%d-confirmed-ids.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+output_heads = main_dir + '/S%d/run%d/S%d_run%d-heads-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+output_legs = main_dir + '/S%d/run%d/S%d_run%d-legs-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+output_confirm_ids = main_dir + '/S%d/run%d/S%d_run%d-confirmed-ids-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
 
 vwr = 0
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -149,9 +149,9 @@ def merge(indices):
 pause = False
 frame_id = -1
 ped_inds_t_in, time_inds_t_in = [], []
-cv2.namedWindow('frame_in', cv2.WINDOW_NORMAL)
+# cv2.namedWindow('frame_in', cv2.WINDOW_NORMAL)
 cv2.namedWindow('frame_out', cv2.WINDOW_NORMAL)
-cv2.setMouseCallback("frame_in", click_in)
+# cv2.setMouseCallback("frame_in", click_in)
 cv2.setMouseCallback("frame_out", click_in)
 raw_frame = 0
 
@@ -206,8 +206,8 @@ while True:
         # cv2.circle(frame, (int(pi_leg[0]), int(pi_leg[1])), 5, RED_COLOR, 2)
         cv2.circle(frame_out, (int(pi_head[0]), int(pi_head[1])), 6, GREEN_COLOR, -1)
 
-        cv2.putText(frame_out, '%d' % p_ind, (int(pi_head[0]), int(pi_head[1])),
-                    cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.6, LIGHT_RED_COLOR, 1)
+        cv2.putText(frame_out, '%d' % ids[ii], (int(pi_head[0]), int(pi_head[1])),
+                    cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.8, LIGHT_RED_COLOR, 2)
     cv2.putText(frame_out, '# %d' % len(ped_inds_t_out), (30, 400),
                 cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 3, RED_COLOR, 5)
     cv2.putText(frame_out, '# %d' % len(confirmed_ids), (30, 600),
@@ -245,7 +245,7 @@ while True:
     # =========================================================
 
     # Display the resulting frame
-    cv2.imshow('frame_in', frame_in)
+    # cv2.imshow('frame_in', frame_in)
     cv2.imshow('frame_out', frame_out)
     key = cv2.waitKeyEx(30)
     if key != -1:
@@ -312,14 +312,15 @@ while True:
 
     elif key & 0xFF == ord('p'):  # print
         parser.heigth = 1.7
-        parser.save(output_heads, p_heads_out[1:], t_out[1:])
+        parser.save(output_heads, p_heads_out[confirmed_ids[0]:], t_out[confirmed_ids[0]:])
         parser.heigth = 0
-        parser.save(output_legs, p_legs_out[1:], t_out[1:])
+        parser.save(output_legs, p_legs_out[confirmed_ids[0]:], t_out[confirmed_ids[0]:])
         print('confirmed_ids {%d}= ' % len(confirmed_ids),  confirmed_ids)
         with open(output_confirm_ids, 'w') as confirm_file:
             confirm_file.write('# %d\n' % len(confirmed_ids))
-            confirm_file.write('# Robot = %d\n' % confirmed_ids[0])
-            confirm_file.write(str(confirmed_ids))
+            confirm_file.write('# Robot = %d\n' % 1)
+            shifted_confirmed_ids = [x-confirmed_ids[0]+1 for x in confirmed_ids]
+            confirm_file.write(str(shifted_confirmed_ids))
 
 
 

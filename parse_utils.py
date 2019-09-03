@@ -49,7 +49,7 @@ class PeTrackParser:
             p_data.append(poss_i)
 
         # t_data = np.array(time_data_list)
-        return p_data, time_data_list
+        return p_data, time_data_list, id_list
 
     def save(self, filename, p_data, t_data):
         with open(filename, 'w') as out_file:

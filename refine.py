@@ -5,10 +5,10 @@ from DEFINITIONS import *
 
 scn_nbr = 2
 run_nbr = 1
-
 parser = PeTrackParser()
-main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
 
+
+# main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
 # p_leg_red, t_leg_red, ids_red = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
 # p_head_red, t_head_red, _ = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
 # p_leg_yellow, t_leg_yellow, ids_yellow = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))

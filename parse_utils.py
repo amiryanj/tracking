@@ -35,11 +35,18 @@ class PeTrackParser:
                 px = float(tokens[2]) * 100
                 py = float(tokens[3]) * -100
                 pz = float(tokens[4])
+
+                hx, hy, hz = 0, 0, 0
+                if len(tokens) == 8:
+                    hx = float(tokens[5]) * 100
+                    hy = float(tokens[6]) * -100
+                    hz = float(tokens[7])
+
                 if id not in id_list:
                     id_list.append(id)
                     pos_data_list.append(list())
                     time_data_list.append(list())
-                pos_data_list[-1].append(np.array([px, py]))
+                pos_data_list[-1].append(np.array([px, py, pz, hx, hy, hz]))
                 time_data_list[-1].append(ts)
 
         p_data = list()
@@ -53,8 +60,20 @@ class PeTrackParser:
 
     def save(self, filename, p_data, t_data):
         with open(filename, 'w') as out_file:
-            out_file.write('# id frame x/m y/m z/m\n')
-            for ii, ped in enumerate(p_data):
-                for tt, pos in enumerate(ped):
-                    out_file.write("%d %d %.5f %.5f %.2f\n" %(ii+1, t_data[ii][tt], pos[0]/100, pos[1]/-100, self.heigth))
-                # out_file.write('\n')
+            if len(p_data[-1][-1]) < 6:
+                out_file.write('# id frame x/m y/m z/m\n')
+                for ii, ped in enumerate(p_data):
+                    for tt, pos in enumerate(ped):
+                        out_file.write("%d %d %.5f %.5f %.2f\n" %(ii+1, t_data[ii][tt], pos[0]/100, pos[1]/-100, self.heigth))
+                    # out_file.write('\n')
+            else:
+                out_file.write('# id frame foot_x/m foot_y/m foot_z/m head_x/m head_y/m head_z/m\n')
+                out_file.write('# ids = %d\n' % len(t_data))
+                out_file.write('# Robot id = %d\n' % 1)
+                for ii, Ti in enumerate(t_data):
+                    for kk, t in enumerate(Ti):
+                        out_file.write("%d %d %.3f %.3f %.2f %.3f %.3f %.2f\n"
+                                       % (ii + 1, t,
+                                          p_data[ii][kk, 0] / 100, p_data[ii][kk, 1] / -100, p_data[ii][kk, 2],
+                                          p_data[ii][kk, 3] / 100, p_data[ii][kk, 4] / -100, p_data[ii][kk, 5]))
+

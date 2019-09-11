@@ -1,14 +1,17 @@
+import os
+
 import numpy as np
 import cv2
 from parse_utils import PeTrackParser
 from DEFINITIONS import *
-
-scn_nbr = 2
-run_nbr = 1
+from linear_models import MyKalman
+import scipy
+scn_nbr = 9
+run_nbr = 3
 parser = PeTrackParser()
+main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
+# main_dir = '/home/cyrus/Dropbox/PAMELA data/new_cut_video'
 
-
-# main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
 # p_leg_red, t_leg_red, ids_red = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
 # p_head_red, t_head_red, _ = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
 # p_leg_yellow, t_leg_yellow, ids_yellow = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
@@ -21,84 +24,86 @@ parser = PeTrackParser()
 # t_data = list() + t_data_red + t_data_yellow
 # ids = [-1] + ids_red + ids_yellow
 
-# main_dir = '/home/cyrus/Dropbox/PAMELA data/new_cut_video'
-main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
-p_heads, t_head, ids = parser.load(main_dir + '/S%d/run%d/S%d_run%d-heads.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-p_legs, t_leg, _ = parser.load(main_dir + '/S%d/run%d/S%d_run%d-legs.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-t_data = t_head
-
-assert len(p_legs) == len(p_heads), "mismatch - heads and legs"
-assert len(t_data) == len(p_legs), "mismatch - times and locs"
-for ii, Ti in enumerate(t_data):
-    assert len(Ti) == len(p_heads[ii]), "mismatch - heads - %d" % ii
-    assert len(Ti) == len(p_legs[ii]), "mismatch - legs - %d" % ii
+# p_heads, t_head, ids = parser.load(main_dir + '/S%d/run%d/S%d_run%d-heads.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# p_legs, t_leg, _ = parser.load(main_dir + '/S%d/run%d/S%d_run%d-legs.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+# t_data = t_head
 
 
-p_legs_out = p_legs.copy()
-p_heads_out = p_heads.copy()
-t_out = t_data.copy()
+# assert len(p_legs) == len(p_heads), "mismatch - heads and legs"
+# assert len(t_data) == len(p_legs), "mismatch - times and locs"
+# for ii, Ti in enumerate(t_data):
+#     assert len(Ti) == len(p_heads[ii]), "mismatch - heads - %d" % ii
+#     assert len(Ti) == len(p_legs[ii]), "mismatch - legs - %d" % ii
+
+# output_heads = main_dir + '/S%d/run%d/S%d_run%d-heads-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+# output_legs = main_dir + '/S%d/run%d/S%d_run%d-legs-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+# output_confirm_ids = main_dir + '/S%d/run%d/S%d_run%d-confirmed-ids-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+
+
+output_file = main_dir + '/S%d/run%d/S%d_run%d-homo.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+if os.path.exists(output_file):
+    p_data, t_data, ids = parser.load(output_file)
+else:
+    p_data, t_data, ids = parser.load(main_dir + '/S%d/run%d/S%d_run%d.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+
+# p_legs = [x[:, :3] for x in p_data]
+# p_heads = [x[:, 3:] for x in p_data]
+
+
+p_out = p_data
+t_out = t_data
+
+# ======== Kalman Filter ===============
+# fps = 12.5
+# kalman = MyKalman(1/fps)
+# p_heads_filtered = []
+# for x in p_heads:
+#     filtered_pos, filtered_vel = kalman.filter(x[:, :2])
+#     smoothed_pos, smoothed_vel = kalman.smooth(x[:, :2])
+#     p_heads_filtered.append(smoothed_pos)
+
+# p_heads = p_heads_filtered.copy()
+
+# =============== Homography ===========
+Hinv = np.eye(3, dtype=np.float)
+homog_file = main_dir + '/homog.txt'
+if os.path.exists(homog_file):
+    _H = np.loadtxt(homog_file, dtype=float)
+    Hinv = np.linalg.inv(_H)
+
 
 cap = cv2.VideoCapture(main_dir + '/S%d/S%d_run%d0001-100000-undistort.mp4' %(scn_nbr, scn_nbr, run_nbr))
-output_heads = main_dir + '/S%d/run%d/S%d_run%d-heads-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
-output_legs = main_dir + '/S%d/run%d/S%d_run%d-legs-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
-output_confirm_ids = main_dir + '/S%d/run%d/S%d_run%d-confirmed-ids-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
 
 vwr = 0
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
 # vwr = cv2.VideoWriter(main_dir + '/(1)-output-red.mp4', fourcc, 30, (1600, 1200))
 
+
+def headToFoot(x, Hinv):
+    # xHomogenous = np.hstack((x, np.ones((x.shape[0], 1))))
+    xHomogenous = np.hstack((x, np.ones(1)))
+    if xHomogenous.ndim > 1:
+        x_tr = np.transpose(xHomogenous)
+        x_tr = np.matmul(Hinv, x_tr)  # to camera frame
+        xXYZ = np.transpose(x_tr / x_tr[2])  # to pixels (from millimeters)
+        return xXYZ[:, :2].astype(int)
+    else:
+        xHomogenous = np.dot(Hinv, xHomogenous)  # to camera frame
+        xXYZ = xHomogenous / xHomogenous[2]  # to pixels (from millimeters)
+        return xXYZ[:2].astype(int)
+
+
 def goto(frame):
     global frame_id, raw_frame
     frame_id = max(frame - 1, 0)
     cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
-    ret, raw_frame = cap.read()
+    ret, try_frame = cap.read()
+    if ret:
+        raw_frame = try_frame
 
 
 def checkPointCircle(point, center, radius=5):
-    return np.linalg.norm(point - center) < radius
-
-selected_ids = []
-confirmed_ids = []
-def click_in(event, x, y, flags, param):
-    # grab references to the global variables
-    global selected_ids, confirmed_ids
-    global ped_inds_t_in, time_inds_t_in
-
-    # if the left mouse button was clicked, select the closest head id
-    # if SHIFT_KEY is hold , add them into a list()
-    if event == cv2.EVENT_LBUTTONDOWN:
-        print('click [%d, %d], flags = ' %(x, y), flags)
-        if flags & cv2.EVENT_FLAG_SHIFTKEY == 0 and flags & cv2.EVENT_FLAG_CTRLKEY == 0:  # if shift is not hold clean the list
-            selected_ids = []
-        for ii, p_ind in enumerate(ped_inds_t_out):
-            t_ind = time_inds_t_out[ii]
-            pi_head_i = p_heads_out[p_ind][t_ind]
-            if checkPointCircle(np.array([x, y]), pi_head_i, 6):
-                if p_ind not in selected_ids:
-                    selected_ids.append(p_ind)
-                else:
-                    selected_ids.remove(p_ind)
-                if flags & cv2.EVENT_FLAG_CTRLKEY:
-                    if p_ind not in confirmed_ids:
-                        confirmed_ids.append(p_ind)
-                    else:
-                        confirmed_ids.remove(p_ind)
-                # print('ID =  %d , frames =' % p_ind, t_data[p_ind])
-                # break
-        confirmed_ids.sort()
-    elif event == cv2.EVENT_MOUSEWHEEL:
-        if flags < 0:
-            goto(frame_id - 9)
-        else:
-            goto(frame_id + 11)
-
-
-def validCount():
-    count = 0
-    for ii, Ti in enumerate(t_out):
-        if len(Ti) != 0:
-            count += 1
-    return count
+    return np.linalg.norm(point[:2] - center[:2]) < radius
 
 
 # t means frame_index everywhere
@@ -110,10 +115,8 @@ def merge(indices):
         t1.append(max(t_data[ind_k]))
     t0, t1 = min(t0), max(t1)
 
-    # TODO everything for head and leg
     merged_t = []
-    merged_p_head = np.zeros((t1+1 - t0, 2), dtype=np.float64)
-    merged_p_leg = np.zeros((t1 + 1 - t0, 2), dtype=np.float64)
+    merged_p = np.zeros((t1+1 - t0, 6), dtype=np.float64)
 
     # merging (+averaging if found parallel tracks)
     for t in range(t0, t1+1):
@@ -121,12 +124,10 @@ def merge(indices):
         for kk, ind_k in enumerate(indices):
             if t in t_data[ind_k]:
                 ind_t = t_data[ind_k].index(t)
-                merged_p_leg[t-t0] += p_legs[ind_k][ind_t]
-                merged_p_head[t - t0] += p_heads[ind_k][ind_t]
+                merged_p[t - t0] += p_data[ind_k][ind_t]
                 num_contributions += 1
         if num_contributions > 0:
-            merged_p_leg[t-t0] /= num_contributions
-            merged_p_head[t - t0] /= num_contributions
+            merged_p[t - t0] /= num_contributions
             merged_t.append(t)
 
     # interpolation
@@ -137,13 +138,106 @@ def merge(indices):
         else:
             t_A = last_t_detected
             t_B = merged_t[last_t_index+1]
-            merged_p_leg[t-t0] = (t_B - t) / (t_B - t_A) * merged_p_leg[t_A - t0] +\
-                                 (t - t_A) / (t_B - t_A) * merged_p_leg[t_B - t0]
-            merged_p_head[t - t0] = (t_B - t) / (t_B - t_A) * merged_p_head[t_A - t0] +\
-                                    (t - t_A) / (t_B - t_A) * merged_p_head[t_B - t0]
+            merged_p[t-t0] = (t_B - t) / (t_B - t_A) * merged_p[t_A - t0] +\
+                             (t - t_A) / (t_B - t_A) * merged_p[t_B - t0]
 
     merged_t = [i for i in range(t0, t1+1)]
-    return merged_t, merged_p_head, merged_p_leg
+    return merged_t, merged_p
+
+
+def repair(pid, new_p, cur_t):
+    try:
+        ind_t = t_data[pid].index(cur_t)  # should always exist
+    except ValueError:
+        if t_data[pid][0] - 150 < cur_t < t_data[pid][0]:  # up to 30 frame before pid's first frame can add data
+            gap_size = t_data[pid][0] - cur_t
+            prepend_ps = np.zeros((gap_size, 6), dtype=p_data[pid].dtype)
+            for tt in range(cur_t, t_data[pid][0]):
+                prepend_ps[tt-cur_t][3:5] = new_p * float(t_data[pid][0] - tt) / gap_size + \
+                                            p_data[pid][0][3:5] * float(tt - cur_t) / gap_size
+            p_data[pid] = np.concatenate([prepend_ps, p_data[pid]])
+            t_data[pid] = [tt for tt in range(cur_t, t_data[pid][0])] + t_data[pid]
+            ind_t = 0
+        elif t_data[pid][-1] < cur_t < t_data[pid][-1] + 150:
+
+            gap_size = cur_t - t_data[pid][-1]
+            append_ps = np.zeros((gap_size, 6), dtype=p_data[pid].dtype)
+            for tt in range(t_data[pid][-1]+1, cur_t+1):
+                append_ps[tt - t_data[pid][-1]-1][3:5] = new_p * float(tt - t_data[pid][-1]) / gap_size + \
+                                                         p_data[pid][-1][3:5] * float(cur_t - tt) / gap_size
+            p_data[pid] = np.concatenate([p_data[pid], append_ps])
+            t_data[pid] = t_data[pid] + [tt for tt in range(t_data[pid][-1]+1, cur_t+1)]
+            ind_t = t_data[pid][-1]
+        return
+
+    p_data[pid][ind_t][3:5] = new_p
+
+    repair_gap = 6
+    if ind_t >= repair_gap:
+        for tt in range(ind_t-repair_gap, ind_t):
+            p_data[pid][tt][3:5] = new_p * float(tt+repair_gap-ind_t) / repair_gap +\
+                                   p_data[pid][ind_t-repair_gap][3:5] * float(ind_t-tt) / repair_gap
+    if ind_t < len(t_data[pid]) - repair_gap:
+        for tt in range(ind_t, ind_t + repair_gap):
+            p_data[pid][tt][3:5] = new_p * float(repair_gap-tt+ind_t) / repair_gap +\
+                                   p_data[pid][ind_t+repair_gap][3:5] * float(tt-ind_t) / repair_gap
+
+
+
+selected_ids = []
+confirmed_ids = []
+def click_in(event, x, y, flags, param):
+    # grab references to the global variables
+    global selected_ids, confirmed_ids
+    global ped_inds_t_in, time_inds_t_in
+
+    # if the left mouse button was clicked, select the closest head id
+    # if SHIFT_KEY is hold , add them into a list()
+    if event == cv2.EVENT_LBUTTONDOWN:
+        # print('click [%d, %d], flags = ' %(x, y), flags)
+        if flags & cv2.EVENT_FLAG_ALTKEY and len(selected_ids) == 1:
+            repair(selected_ids[0], np.array([x,y]).astype(float), frame_id)
+            return
+        if flags & cv2.EVENT_FLAG_CTRLKEY:
+            if len(selected_ids) != 0:
+                print('%.1f, %.1f, %d, %d' % (p_data[selected_ids[0]][frame_id][3],
+                                              p_data[selected_ids[0]][frame_id][4],
+                                              x, y))
+            return
+
+        if flags & cv2.EVENT_FLAG_SHIFTKEY == 0 and flags & cv2.EVENT_FLAG_ALTKEY == 0:  # if shift is not hold clean the list
+            selected_ids = []
+        for ii, p_ind in enumerate(ped_inds_t_out):
+            t_ind = time_inds_t_out[ii]
+            pi_head_i = p_out[p_ind][t_ind][3:5]
+            if checkPointCircle(np.array([x, y]), pi_head_i, 6):
+                if p_ind not in selected_ids:
+                    selected_ids.append(p_ind)
+                else:
+                    selected_ids.remove(p_ind)
+
+        confirmed_ids.sort()
+    elif event == cv2.EVENT_MOUSEWHEEL:
+        if flags < 0:
+            if flags & cv2.EVENT_FLAG_CTRLKEY:
+                goto(frame_id)
+            else:
+                goto(frame_id - 9)
+        else:
+            if flags & cv2.EVENT_FLAG_CTRLKEY:
+                goto(frame_id + 2)
+            else:
+                goto(frame_id + 11)
+
+
+def validCount():
+    count = 0
+    for ii, Ti in enumerate(t_out):
+        if len(Ti) != 0:
+            count += 1
+    return count
+
+
 
 
 pause = False
@@ -161,7 +255,7 @@ while True:
         frame_id += 1
         ret, raw_frame = cap.read()
         if not ret:
-            print("video finished or broken!")
+            # print("video finished or broken!")
             frame_id -=1
             raw_frame = frame_in.copy()
     frame_in = np.copy(raw_frame)
@@ -178,10 +272,9 @@ while True:
 
     for ii, p_ind in enumerate(ped_inds_t_in):
         t_ind = time_inds_t_in[ii]
-        # pi_leg = p_legs[p_ind][t_ind]
-
-        pi_head = p_heads[p_ind][t_ind]
+        pi_head = p_data[p_ind][t_ind][3:5]
         if pi_head[0] > frame_in.shape[1]: continue
+
         cv2.circle(frame_in, (int(pi_head[0]), int(pi_head[1])), 6, GREEN_COLOR, -1)
         cv2.putText(frame_in, str(p_ind), (int(pi_head[0]), int(pi_head[1])),
                     cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.7, LIGHT_RED_COLOR, 2)
@@ -199,15 +292,16 @@ while True:
 
     for ii, p_ind in enumerate(ped_inds_t_out):
         t_ind = time_inds_t_out[ii]
-        # pi_leg = p_legs[p_ind][t_ind]
-
-        pi_head = p_heads_out[p_ind][t_ind]  # FIXME
+        pi_head = p_out[p_ind][t_ind][3:5]
         if pi_head[0] > frame_in.shape[1]: continue
-        # cv2.circle(frame, (int(pi_leg[0]), int(pi_leg[1])), 5, RED_COLOR, 2)
-        cv2.circle(frame_out, (int(pi_head[0]), int(pi_head[1])), 6, GREEN_COLOR, -1)
 
-        cv2.putText(frame_out, '%d' % ids[ii], (int(pi_head[0]), int(pi_head[1])),
+        cv2.circle(frame_out, (int(pi_head[0]), int(pi_head[1])), 6, GREEN_COLOR, -1)
+        cv2.putText(frame_out, '%d' % p_ind, (int(pi_head[0]), int(pi_head[1])),
                     cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.8, LIGHT_RED_COLOR, 2)
+
+        pi_foot = headToFoot(pi_head, Hinv)
+        cv2.circle(frame_out, (int(pi_foot[0]), int(pi_foot[1])), 9, BLUE_COLOR, 3)
+
     cv2.putText(frame_out, '# %d' % len(ped_inds_t_out), (30, 400),
                 cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 3, RED_COLOR, 5)
     cv2.putText(frame_out, '# %d' % len(confirmed_ids), (30, 600),
@@ -218,7 +312,7 @@ while True:
     for kk, selected_id in enumerate(selected_ids):
         if selected_id <len(t_data) and frame_id in t_data[selected_id]:
             t_ind = t_data[selected_id].index(frame_id)
-            p_selected_head = p_heads[selected_id][t_ind]
+            p_selected_head = p_data[selected_id][t_ind][3:5]
             cv2.circle(frame_in, (int(p_selected_head[0]), int(p_selected_head[1])), 9, LIGHT_BLUE_COLOR, -1)
             cv2.circle(frame_out, (int(p_selected_head[0]), int(p_selected_head[1])), 9, LIGHT_BLUE_COLOR, -1)
 
@@ -229,7 +323,7 @@ while True:
     for kk, confirmed_id in enumerate(confirmed_ids):
         if frame_id in t_out[confirmed_id]:
             t_ind = t_out[confirmed_id].index(frame_id)
-            p_confirmed_head = p_heads_out[confirmed_id][t_ind]
+            p_confirmed_head = p_out[confirmed_id][t_ind][3:5]
             cv2.rectangle(frame_out, (int(p_confirmed_head[0]) - 15, int(p_confirmed_head[1]) - 15),
                           (int(p_confirmed_head[0]) + 15, int(p_confirmed_head[1]) + 15),
                           AQUAMARINE_COLOR, 3)
@@ -284,44 +378,33 @@ while True:
 
     elif key & 0xFF == ord('m'):
         if len(selected_ids) < 1:
-            print('less than 2 ped are selected to merge!')
+            # print('less than 2 ped are selected to merge!')
+            pass
 
         else:
-            merged_t, merged_p_head, merged_p_leg = merge(selected_ids)
+            merged_ts, merged_ps = merge(selected_ids)
             for kk, ind_k in enumerate(selected_ids):
                 t_out[ind_k] = []
-                p_heads_out[ind_k] = []
-                p_legs_out[ind_k] = []
-            t_out.append(merged_t)
-            p_heads_out.append(merged_p_head)
-            p_legs_out.append(merged_p_leg)
+                p_out[ind_k] = []
+            t_out.append(merged_ts)
+            p_out.append(merged_ps)
             confirmed_ids.append(len(t_out)-1)
 
     elif key == DELETE_KEY:
         for kk, ind_k in enumerate(selected_ids):
             t_out[ind_k] = []
-            p_heads_out[ind_k] = []
-            p_legs_out[ind_k] = []
+            p_out[ind_k] = []
 
     elif key & 0xFF == ord('r'):
         for ii, Ti in enumerate(t_data):
             if len(Ti) < 5:
                 t_out[ii] = []
-                p_heads_out[ii] = []
-                p_legs_out[ii] = []
+                p_out[ii] = []
 
     elif key & 0xFF == ord('p'):  # print
-        parser.heigth = 1.7
-        parser.save(output_heads, p_heads_out[confirmed_ids[0]:], t_out[confirmed_ids[0]:])
-        parser.heigth = 0
-        parser.save(output_legs, p_legs_out[confirmed_ids[0]:], t_out[confirmed_ids[0]:])
-        print('confirmed_ids {%d}= ' % len(confirmed_ids),  confirmed_ids)
-        with open(output_confirm_ids, 'w') as confirm_file:
-            confirm_file.write('# %d\n' % len(confirmed_ids))
-            confirm_file.write('# Robot = %d\n' % 1)
-            shifted_confirmed_ids = [x-confirmed_ids[0]+1 for x in confirmed_ids]
-            confirm_file.write(str(shifted_confirmed_ids))
-
+        # parser.save(output_file, p_out[confirmed_ids[0]:], t_out[confirmed_ids[0]:])
+        parser.save(output_file, p_out, t_out)
+        # print('confirmed_ids {%d}= ' % len(confirmed_ids),  confirmed_ids)
 
 
     if vwr is not 0:

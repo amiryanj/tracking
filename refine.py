@@ -5,39 +5,11 @@ from parse_utils import PeTrackParser
 from DEFINITIONS import *
 from linear_models import MyKalman
 
-scn_nbr = 1
-run_nbr = 1
+scn_nbr = 5
+run_nbr = 5
 parser = PeTrackParser()
 main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
 # main_dir = '/home/cyrus/Dropbox/PAMELA data/new_cut_video'
-
-# p_leg_red, t_leg_red, ids_red = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-# p_head_red, t_head_red, _ = parser.load(main_dir + '/S%d/run%d/S%d_run%d_red_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-# p_leg_yellow, t_leg_yellow, ids_yellow = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height170.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-# p_head_yellow, t_head_yellow, _ = parser.load(main_dir + '/S%d/run%d/S%d_run%d_yellow_height0.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-# t_data_red = t_leg_red
-# t_data_yellow = t_head_yellow
-# print('#red =', len(t_data_red), ' #yellow =', len(t_data_yellow))
-# p_legs = list() + p_leg_red + p_leg_yellow
-# p_heads = list() + p_head_red + p_head_yellow
-# t_data = list() + t_data_red + t_data_yellow
-# ids = [-1] + ids_red + ids_yellow
-
-# p_heads, t_head, ids = parser.load(main_dir + '/S%d/run%d/S%d_run%d-heads.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-# p_legs, t_leg, _ = parser.load(main_dir + '/S%d/run%d/S%d_run%d-legs.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
-# t_data = t_head
-
-
-# assert len(p_legs) == len(p_heads), "mismatch - heads and legs"
-# assert len(t_data) == len(p_legs), "mismatch - times and locs"
-# for ii, Ti in enumerate(t_data):
-#     assert len(Ti) == len(p_heads[ii]), "mismatch - heads - %d" % ii
-#     assert len(Ti) == len(p_legs[ii]), "mismatch - legs - %d" % ii
-
-# output_heads = main_dir + '/S%d/run%d/S%d_run%d-heads-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
-# output_legs = main_dir + '/S%d/run%d/S%d_run%d-legs-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
-# output_confirm_ids = main_dir + '/S%d/run%d/S%d_run%d-confirmed-ids-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
-
 
 output_file = main_dir + '/S%d/run%d/S%d_run%d-kalman.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
 # if os.path.exists(output_file):
@@ -48,27 +20,25 @@ p_data, t_data, ids = parser.load(main_dir + '/S%d/run%d/S%d_run%d-new.txt' % (s
 # p_legs = [x[:, :3] for x in p_data]
 # p_heads = [x[:, 3:] for x in p_data]
 
-
 p_out = p_data
 t_out = t_data
 
 # ======== Kalman Filter ===============
-fps = 12.5
-p_heads_filtered = []
-for x in p_data:
-    kalman = MyKalman(12.5/fps)
-    filtered_pos, filtered_vel = kalman.filter(x[:, 3:5])
-    smoothed_pos, smoothed_vel = kalman.smooth(x[:, 3:5])
-    p_heads_filtered.append(smoothed_pos)
-    x[:, 3:5] = smoothed_pos
-p_heads = p_heads_filtered.copy()
+# fps = 12.5
+# p_heads_filtered = []
+# for x in p_data:
+#     kalman = MyKalman(12.5/fps)
+#     filtered_pos, filtered_vel = kalman.filter(x[:, 3:5])
+#     smoothed_pos, smoothed_vel = kalman.smooth(x[:, 3:5])
+#     p_heads_filtered.append(smoothed_pos)
+#     x[:, 3:5] = smoothed_pos
+# p_heads = p_heads_filtered.copy()
 
 # =============== Homography ===========
-Hinv = np.eye(3, dtype=np.float)
+Homog = np.eye(3, dtype=np.float)
 homog_file = main_dir + '/homog.txt'
 if os.path.exists(homog_file):
-    _H = np.loadtxt(homog_file, dtype=float)
-    Hinv = np.linalg.inv(_H)
+    Homog = np.loadtxt(homog_file, dtype=float)
 
 
 cap = cv2.VideoCapture(main_dir + '/S%d/S%d_run%d0001-100000-undistort.mp4' %(scn_nbr, scn_nbr, run_nbr))
@@ -78,16 +48,16 @@ fourcc = cv2.VideoWriter_fourcc(*'XVID')
 # vwr = cv2.VideoWriter(main_dir + '/(1)-output-red.mp4', fourcc, 30, (1600, 1200))
 
 
-def headToFoot(x, Hinv):
+def headToFoot(x, Homog):
     # xHomogenous = np.hstack((x, np.ones((x.shape[0], 1))))
-    xHomogenous = np.hstack((x, np.ones(1)))
+    xHomogenous = np.hstack((x[:2], np.ones(1)))
     if xHomogenous.ndim > 1:
         x_tr = np.transpose(xHomogenous)
-        x_tr = np.matmul(Hinv, x_tr)  # to camera frame
+        x_tr = np.matmul(Homog, x_tr)  # to camera frame
         xXYZ = np.transpose(x_tr / x_tr[2])  # to pixels (from millimeters)
         return xXYZ[:, :2].astype(int)
     else:
-        xHomogenous = np.dot(Hinv, xHomogenous)  # to camera frame
+        xHomogenous = np.dot(Homog, xHomogenous)  # to camera frame
         xXYZ = xHomogenous / xHomogenous[2]  # to pixels (from millimeters)
         return xXYZ[:2].astype(int)
 
@@ -298,8 +268,8 @@ while True:
         cv2.putText(frame_out, '%d' % p_ind, (int(pi_head[0]), int(pi_head[1])),
                     cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.8, LIGHT_RED_COLOR, 2)
 
-        # pi_foot = headToFoot(pi_head, Hinv)
-        # cv2.circle(frame_out, (int(pi_foot[0]), int(pi_foot[1])), 9, BLUE_COLOR, 3)
+        pi_foot = headToFoot(pi_head, Homog)
+        cv2.circle(frame_out, (int(pi_foot[0]), int(pi_foot[1])), 9, BLUE_COLOR, 3)
 
     cv2.putText(frame_out, '# %d' % len(ped_inds_t_out), (30, 400),
                 cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 3, RED_COLOR, 5)

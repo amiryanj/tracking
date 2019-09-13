@@ -1,13 +1,12 @@
 import os
-
-import numpy as np
 import cv2
+import numpy as np
 from parse_utils import PeTrackParser
 from DEFINITIONS import *
 from linear_models import MyKalman
-import scipy
-scn_nbr = 9
-run_nbr = 3
+
+scn_nbr = 1
+run_nbr = 1
 parser = PeTrackParser()
 main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
 # main_dir = '/home/cyrus/Dropbox/PAMELA data/new_cut_video'
@@ -40,11 +39,11 @@ main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
 # output_confirm_ids = main_dir + '/S%d/run%d/S%d_run%d-confirmed-ids-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
 
 
-output_file = main_dir + '/S%d/run%d/S%d_run%d-homo.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
-if os.path.exists(output_file):
-    p_data, t_data, ids = parser.load(output_file)
-else:
-    p_data, t_data, ids = parser.load(main_dir + '/S%d/run%d/S%d_run%d.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+output_file = main_dir + '/S%d/run%d/S%d_run%d-kalman.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+# if os.path.exists(output_file):
+#     p_data, t_data, ids = parser.load(output_file)
+# else:
+p_data, t_data, ids = parser.load(main_dir + '/S%d/run%d/S%d_run%d-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
 
 # p_legs = [x[:, :3] for x in p_data]
 # p_heads = [x[:, 3:] for x in p_data]
@@ -54,15 +53,15 @@ p_out = p_data
 t_out = t_data
 
 # ======== Kalman Filter ===============
-# fps = 12.5
-# kalman = MyKalman(1/fps)
-# p_heads_filtered = []
-# for x in p_heads:
-#     filtered_pos, filtered_vel = kalman.filter(x[:, :2])
-#     smoothed_pos, smoothed_vel = kalman.smooth(x[:, :2])
-#     p_heads_filtered.append(smoothed_pos)
-
-# p_heads = p_heads_filtered.copy()
+fps = 12.5
+p_heads_filtered = []
+for x in p_data:
+    kalman = MyKalman(12.5/fps)
+    filtered_pos, filtered_vel = kalman.filter(x[:, 3:5])
+    smoothed_pos, smoothed_vel = kalman.smooth(x[:, 3:5])
+    p_heads_filtered.append(smoothed_pos)
+    x[:, 3:5] = smoothed_pos
+p_heads = p_heads_filtered.copy()
 
 # =============== Homography ===========
 Hinv = np.eye(3, dtype=np.float)
@@ -299,8 +298,8 @@ while True:
         cv2.putText(frame_out, '%d' % p_ind, (int(pi_head[0]), int(pi_head[1])),
                     cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.8, LIGHT_RED_COLOR, 2)
 
-        pi_foot = headToFoot(pi_head, Hinv)
-        cv2.circle(frame_out, (int(pi_foot[0]), int(pi_foot[1])), 9, BLUE_COLOR, 3)
+        # pi_foot = headToFoot(pi_head, Hinv)
+        # cv2.circle(frame_out, (int(pi_foot[0]), int(pi_foot[1])), 9, BLUE_COLOR, 3)
 
     cv2.putText(frame_out, '# %d' % len(ped_inds_t_out), (30, 400),
                 cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 3, RED_COLOR, 5)

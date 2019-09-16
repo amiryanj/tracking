@@ -3,25 +3,46 @@ import cv2
 import numpy as np
 from parse_utils import PeTrackParser
 from DEFINITIONS import *
+from calc_homog import headToFoot
 from linear_models import MyKalman
 
-scn_nbr = 5
-run_nbr = 5
+scn_nbr = 9
+run_nbr = 3
 parser = PeTrackParser()
 main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
 # main_dir = '/home/cyrus/Dropbox/PAMELA data/new_cut_video'
 
-output_file = main_dir + '/S%d/run%d/S%d_run%d-kalman.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+input_file = main_dir + '/S%d/run%d/S%d_run%d-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+output_file = main_dir + '/S%d/run%d/S%d_run%d-feetcorrect.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
 # if os.path.exists(output_file):
-#     p_data, t_data, ids = parser.load(output_file)
-# else:
-p_data, t_data, ids = parser.load(main_dir + '/S%d/run%d/S%d_run%d-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr))
+#     input_file = output_file
+p_data, t_data, ids = parser.load(input_file)
 
 # p_legs = [x[:, :3] for x in p_data]
 # p_heads = [x[:, 3:] for x in p_data]
 
 p_out = p_data
 t_out = t_data
+# =============== Homography ===========
+robot_ids = [[-1, -1, -1, -1, -1],  # 1
+             [-1, -1, -1, -1, -1],  # 2
+             [27, 25, 25, 27, 27],  # 3
+             [27, 27, 27, 1, 1],    # 4
+             [2, 1, 1, 1, 1],       # 5
+             [1, 1, 1, 1, 1],       # 6
+             [],                    # 7
+             [1, 1, 1, 1, 1],       # 8
+             [1, 1, 1]]             # 9
+robot_id = robot_ids[scn_nbr-1][run_nbr-1] - 1
+Homog_ped = np.loadtxt(main_dir + '/homog.txt', dtype=float)
+Homog_robot = np.loadtxt(main_dir + '/homog-robot.txt', dtype=float)
+for ii, x in enumerate(p_data):
+    if ii != robot_id:
+        foot = headToFoot(x[:, 3:5], Homog_ped)
+    else:
+        foot = headToFoot(x[:, 3:5], Homog_robot)
+    x[:, 0:2] = foot
+
 
 # ======== Kalman Filter ===============
 # fps = 12.5
@@ -34,33 +55,12 @@ t_out = t_data
 #     x[:, 3:5] = smoothed_pos
 # p_heads = p_heads_filtered.copy()
 
-# =============== Homography ===========
-Homog = np.eye(3, dtype=np.float)
-homog_file = main_dir + '/homog.txt'
-if os.path.exists(homog_file):
-    Homog = np.loadtxt(homog_file, dtype=float)
-
 
 cap = cv2.VideoCapture(main_dir + '/S%d/S%d_run%d0001-100000-undistort.mp4' %(scn_nbr, scn_nbr, run_nbr))
 
 vwr = 0
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
 # vwr = cv2.VideoWriter(main_dir + '/(1)-output-red.mp4', fourcc, 30, (1600, 1200))
-
-
-def headToFoot(x, Homog):
-    # xHomogenous = np.hstack((x, np.ones((x.shape[0], 1))))
-    xHomogenous = np.hstack((x[:2], np.ones(1)))
-    if xHomogenous.ndim > 1:
-        x_tr = np.transpose(xHomogenous)
-        x_tr = np.matmul(Homog, x_tr)  # to camera frame
-        xXYZ = np.transpose(x_tr / x_tr[2])  # to pixels (from millimeters)
-        return xXYZ[:, :2].astype(int)
-    else:
-        xHomogenous = np.dot(Homog, xHomogenous)  # to camera frame
-        xXYZ = xHomogenous / xHomogenous[2]  # to pixels (from millimeters)
-        return xXYZ[:2].astype(int)
-
 
 def goto(frame):
     global frame_id, raw_frame
@@ -268,7 +268,9 @@ while True:
         cv2.putText(frame_out, '%d' % p_ind, (int(pi_head[0]), int(pi_head[1])),
                     cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.8, LIGHT_RED_COLOR, 2)
 
-        pi_foot = headToFoot(pi_head, Homog)
+        pi_foot = p_out[p_ind][t_ind][0:2]
+        # pi_foot = headToFoot(pi_head, Homog_ped)
+
         cv2.circle(frame_out, (int(pi_foot[0]), int(pi_foot[1])), 9, BLUE_COLOR, 3)
 
     cv2.putText(frame_out, '# %d' % len(ped_inds_t_out), (30, 400),

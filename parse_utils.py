@@ -69,7 +69,7 @@ class PeTrackParser:
             else:
                 out_file.write('# id frame foot_x/m foot_y/m foot_z/m head_x/m head_y/m head_z/m\n')
                 out_file.write('# ids = %d\n' % len(t_data))
-                out_file.write('# Robot id = %d\n' % 1)
+                # out_file.write('# Robot id = %d\n' % 1)
                 for ii, Ti in enumerate(t_data):
                     for kk, t in enumerate(Ti):
                         out_file.write("%d %d %.3f %.3f %.2f %.3f %.3f %.2f\n"

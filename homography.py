@@ -6,7 +6,7 @@ from parse_utils import PeTrackParser
 from DEFINITIONS import *
 
 
-def headToFoot(x, Homog):
+def applyHomog(x, Homog):
     if x.ndim == 1:
         xHomogenous = np.hstack((x[:2], np.ones(1)))
         x_tr = np.matmul(Homog, xHomogenous.transpose())  # to camera frame
@@ -24,20 +24,11 @@ def headToFoot(x, Homog):
         raise ValueError('x should be 1d or 2d')
 
 
-if __name__ == '__main__':
+def calcHeadToFootHomog(inp_file):
     head_pts = []  # np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
     foot_pts = []  # np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
 
-    main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
-
-    # csv_file = main_dir + '/head_foot_points.txt'
-    # out_file = main_dir + '/homog.txt'
-
-    csv_file = main_dir + '/head_foot_points-robot.txt'
-    out_file = main_dir + '/homog-robot.txt'
-
-
-    with open(csv_file, 'r') as data_file:
+    with open(inp_file, 'r') as data_file:
         csv_reader = csv.reader(data_file, delimiter=',')
 
         for i, tokens in enumerate(csv_reader):
@@ -54,15 +45,41 @@ if __name__ == '__main__':
     foot_pts = np.asarray(foot_pts).astype(np.float32)
     M, mask = cv2.findHomography(head_pts, foot_pts, cv2.RANSAC, 5.0)
     # M, mask = cv2.findHomography(head_pts, foot_pts, cv2.LMEDS, 5.0)
+    return M, mask
 
-    print(M)
+
+def getFieldHomog():
+    inp_points = np.array([[650, 300],     # TR
+                           [963, 288],     # TL
+                           [1008, 1050],   # BL
+                           [592, 1023] ])  # BR
+    out_points = np.array([[0., 0.],
+                           [600., 0.],
+                           [600., 1200.],
+                           [0., 1200.]])  # cm
+    out_points = out_points + np.array([200., 200.])
+    # M, mask = cv2.findHomography(inp_points, out_points, cv2.RANSAC, 5.0)
+    M, mask = cv2.findHomography(inp_points, out_points, cv2.LMEDS, 5.0)
+    return M, mask
+
+
+if __name__ == '__main__':
+    main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
+
+    # csv_file = main_dir + '/head_foot_points.txt'
+    # out_file = main_dir + '/homog.txt'
+
+    csv_file = main_dir + '/head_foot_points-robot.txt'
+    out_file = main_dir + '/homog-robot.txt'
+
+    M, _ = calcHeadToFootHomog(csv_file)
     np.savetxt(out_file, M, fmt='%.6f')
+    print(M)
 
-    Homog = np.eye(3, dtype=np.float)
+    # ****************************************** #
     homog_file = out_file
-    if os.path.exists(homog_file):
-        Homog = np.loadtxt(homog_file, dtype=float)
-
+    HomogH2F = np.loadtxt(homog_file, dtype=float)
+    # ****************************************** #
 
     scn_nbr = 8
     run_nbr = 4
@@ -90,7 +107,7 @@ if __name__ == '__main__':
             t_ind = Ti.index(t)
             head_i_t = p_data[ii][t_ind][3:5].astype(int)
             head_locs.append(head_i_t)
-            foot_i_t = headToFoot(head_i_t, Homog)
+            foot_i_t = applyHomog(head_i_t, HomogH2F)
             foot_locs.append(foot_i_t)
             cv2.circle(im, (int(head_i_t[0]), int(head_i_t[1])), 5, RED_COLOR, 2)
             cv2.circle(im, (int(foot_i_t[0]), int(foot_i_t[1])), 15, GREEN_COLOR, 2)

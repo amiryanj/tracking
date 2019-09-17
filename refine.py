@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from parse_utils import PeTrackParser
 from DEFINITIONS import *
-from calc_homog import headToFoot
+from homography import applyHomog, getFieldHomog
 from linear_models import MyKalman
 
 scn_nbr = 9
@@ -12,36 +12,40 @@ parser = PeTrackParser()
 main_dir = 'C:/Users/Javad/Dropbox/PAMELA data/new_cut_video'
 # main_dir = '/home/cyrus/Dropbox/PAMELA data/new_cut_video'
 
-input_file = main_dir + '/S%d/run%d/S%d_run%d-new.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
-output_file = main_dir + '/S%d/run%d/S%d_run%d-feetcorrect.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+input_file = main_dir + '/S%d/run%d/S%d_run%d-std.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
+output_file = main_dir + '/S%d/run%d/S%d_run%d-xyz.txt' % (scn_nbr, run_nbr, scn_nbr, run_nbr)
 # if os.path.exists(output_file):
 #     input_file = output_file
 p_data, t_data, ids = parser.load(input_file)
 
-# p_legs = [x[:, :3] for x in p_data]
-# p_heads = [x[:, 3:] for x in p_data]
-
 p_out = p_data
 t_out = t_data
-# =============== Homography ===========
-robot_ids = [[-1, -1, -1, -1, -1],  # 1
-             [-1, -1, -1, -1, -1],  # 2
-             [27, 25, 25, 27, 27],  # 3
-             [27, 27, 27, 1, 1],    # 4
-             [2, 1, 1, 1, 1],       # 5
-             [1, 1, 1, 1, 1],       # 6
-             [],                    # 7
-             [1, 1, 1, 1, 1],       # 8
-             [1, 1, 1]]             # 9
+
+# =============== Apply Homography ===========
+HomogField, maskField = getFieldHomog()
+# for pi in p_data:
+#     pi[:,  :2] = applyHomog(pi[:,  :2], HomogField)
+#     pi[:, 3:5] = applyHomog(pi[:, 3:5], HomogField)
+
+
+robot_ids = [[-1, -1, -1, -1, -1],  # S1
+             [-1, -1, -1, -1, -1],  # S2
+             [27, 25, 25, 27, 27],  # S3
+             [27, 27, 27, 1, 1],    # S4
+             [2, 1, 1, 1, 1],       # S5
+             [1, 1, 1, 1, 1],       # S6
+             [],                    # S7
+             [1, 1, 1, 1, 1],       # S8
+             [1, 1, 1]]             # S9
 robot_id = robot_ids[scn_nbr-1][run_nbr-1] - 1
-Homog_ped = np.loadtxt(main_dir + '/homog.txt', dtype=float)
-Homog_robot = np.loadtxt(main_dir + '/homog-robot.txt', dtype=float)
-for ii, x in enumerate(p_data):
-    if ii != robot_id:
-        foot = headToFoot(x[:, 3:5], Homog_ped)
-    else:
-        foot = headToFoot(x[:, 3:5], Homog_robot)
-    x[:, 0:2] = foot
+# HomogH2F_ped = np.loadtxt(main_dir + '/homog.txt', dtype=float)
+# HomogH2F_robot = np.loadtxt(main_dir + '/homog-robot.txt', dtype=float)
+# for ii, x in enumerate(p_data):
+#     if ii != robot_id:
+#         foot = applyHomog(x[:, 3:5], HomogH2F_ped)
+#     else:
+#         foot = applyHomog(x[:, 3:5], HomogH2F_robot)
+#     x[:, 0:2] = foot
 
 
 # ======== Kalman Filter ===============
@@ -172,6 +176,8 @@ def click_in(event, x, y, flags, param):
                 print('%.1f, %.1f, %d, %d' % (p_data[selected_ids[0]][frame_id][3],
                                               p_data[selected_ids[0]][frame_id][4],
                                               x, y))
+            else:
+                print('click: ', x, y)
             return
 
         if flags & cv2.EVENT_FLAG_SHIFTKEY == 0 and flags & cv2.EVENT_FLAG_ALTKEY == 0:  # if shift is not hold clean the list
@@ -227,8 +233,10 @@ while True:
             # print("video finished or broken!")
             frame_id -=1
             raw_frame = frame_in.copy()
-    frame_in = np.copy(raw_frame)
-    frame_out = np.copy(raw_frame)
+    warp_frame = cv2.warpPerspective(raw_frame, HomogField, (1000, 1600), cv2.INTER_LINEAR)
+    # warp_frame = raw_frame
+    frame_in = np.copy(warp_frame)
+    frame_out = np.copy(warp_frame)
     cv2.putText(frame_in, str(frame_id), (40, 140), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 4, (200, 30, 100), 2)
 
     # input data # ============================================

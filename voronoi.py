@@ -85,7 +85,15 @@ def voronoi_finite_polygons_2d(vor, radius=None):
 
     return new_regions, np.asarray(new_vertices)
 
+def get_ccw_contour(poly):
+    aug_poly = np.append(poly, poly[0]).reshape((-1, 2))
+    res = np.dot(aug_poly[1:, 0] - aug_poly[:-1, 0], aug_poly[1:, 1] + aug_poly[:-1, 1])
+    if res > 0:  # CW
+        return np.flip(poly, 0)
+    else:
+        return poly
 
+## https://rosettacode.org/wiki/Sutherland-Hodgman_polygon_clipping
 def clip(subjectPolygon, clipPolygon):
     def inside(p):
         return (cp2[0] - cp1[0]) * (p[1] - cp1[1]) > (cp2[1] - cp1[1]) * (p[0] - cp1[0])

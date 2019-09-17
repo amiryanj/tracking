@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import Voronoi
 
-def voronoi_finite_polygons_2d(vor, radius=None):
+def voronoi_finite_polygons_2d(points, radius=None):
     """
     Reconstruct infinite voronoi regions in a 2D diagram to finite
     regions.
@@ -24,6 +24,7 @@ def voronoi_finite_polygons_2d(vor, radius=None):
         end.
 
     """
+    vor = Voronoi(points)
 
     if vor.points.shape[1] != 2:
         raise ValueError("Requires 2D input")

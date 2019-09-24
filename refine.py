@@ -218,9 +218,8 @@ def validCount():
 pause = False
 frame_id = -1
 ped_inds_t_in, time_inds_t_in = [], []
-# cv2.namedWindow('frame_in', cv2.WINDOW_NORMAL)
 cv2.namedWindow('frame_out', cv2.WINDOW_NORMAL)
-# cv2.setMouseCallback("frame_in", click_in)
+cv2.namedWindow('raw_frame', cv2.WINDOW_NORMAL)
 cv2.setMouseCallback("frame_out", click_in)
 raw_frame = 0
 
@@ -247,16 +246,7 @@ while True:
             time_inds_t_in.append(Ti.index(frame_id))
             ped_inds_t_in.append(ind)
 
-    for ii, p_ind in enumerate(ped_inds_t_in):
-        t_ind = time_inds_t_in[ii]
-        pi_head = p_data[p_ind][t_ind][3:5]
-        if pi_head[0] > frame_in.shape[1]: continue
 
-        cv2.circle(frame_in, (int(pi_head[0]), int(pi_head[1])), 6, GREEN_COLOR, -1)
-        cv2.putText(frame_in, str(p_ind), (int(pi_head[0]), int(pi_head[1])),
-                    cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.7, LIGHT_RED_COLOR, 2)
-    cv2.putText(frame_in, '# %d' % len(ped_inds_t_in), (30, 400),
-                cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 3, RED_COLOR, 5)
     # =========================================================
 
     # output data # ===========================================
@@ -271,20 +261,18 @@ while True:
         t_ind = time_inds_t_out[ii]
         pi_head = p_out[p_ind][t_ind][3:5]
         if pi_head[0] > frame_in.shape[1]: continue
+        pi_foot = p_out[p_ind][t_ind][0:2]
+        # pi_foot = headToFoot(pi_head, Homog_ped)
 
         cv2.circle(frame_out, (int(pi_head[0]), int(pi_head[1])), 6, GREEN_COLOR, -1)
         cv2.putText(frame_out, '%d' % p_ind, (int(pi_head[0]), int(pi_head[1])),
                     cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.8, LIGHT_RED_COLOR, 2)
-
-        pi_foot = p_out[p_ind][t_ind][0:2]
-        # pi_foot = headToFoot(pi_head, Homog_ped)
-
         cv2.circle(frame_out, (int(pi_foot[0]), int(pi_foot[1])), 9, BLUE_COLOR, 3)
 
-    cv2.putText(frame_out, '# %d' % len(ped_inds_t_out), (30, 400),
-                cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 3, RED_COLOR, 5)
-    cv2.putText(frame_out, '# %d' % len(confirmed_ids), (30, 600),
-                cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 3, BLUE_COLOR, 5)
+    cv2.putText(frame_out, '# %d' % len(ped_inds_t_out), (10, 100),
+                cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 2.5, RED_COLOR, 5)
+    cv2.putText(frame_out, '# %d' % len(confirmed_ids), (10, 200),
+                cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 2.5, GREEN_COLOR, 5)
     # =========================================================
 
     # =================== Show selected ids ===================
@@ -292,9 +280,7 @@ while True:
         if selected_id <len(t_data) and frame_id in t_data[selected_id]:
             t_ind = t_data[selected_id].index(frame_id)
             p_selected_head = p_data[selected_id][t_ind][3:5]
-            cv2.circle(frame_in, (int(p_selected_head[0]), int(p_selected_head[1])), 9, LIGHT_BLUE_COLOR, -1)
             cv2.circle(frame_out, (int(p_selected_head[0]), int(p_selected_head[1])), 9, LIGHT_BLUE_COLOR, -1)
-
             cv2.rectangle(frame_out, (int(p_selected_head[0]) - 20, int(p_selected_head[1]) - 20),
                           (int(p_selected_head[0]) + 20, int(p_selected_head[1]) + 20),
                           MAGENTA_COLOR, 3)
@@ -306,20 +292,19 @@ while True:
             cv2.rectangle(frame_out, (int(p_confirmed_head[0]) - 15, int(p_confirmed_head[1]) - 15),
                           (int(p_confirmed_head[0]) + 15, int(p_confirmed_head[1]) + 15),
                           AQUAMARINE_COLOR, 3)
-
-    cv2.putText(frame_out, 'Scenario #%d Run #%d Frame %d' %(scn_nbr, run_nbr, frame_id), (30, 60),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.9, LIGHT_RED_COLOR, 2)
-    cv2.putText(frame_out, 'selected IDs=%s' %selected_ids, (30, 200),
-                cv2.FONT_HERSHEY_DUPLEX, 0.8, LIGHT_BLUE_COLOR, 2)
-    cv2.putText(frame_out, 'Total Out= %d' % validCount(), (30, 1000),
-                cv2.FONT_HERSHEY_SIMPLEX, 1.6, MAGENTA_COLOR, 5)
-    cv2.putText(frame_out, 'confirmed IDs=%s' % confirmed_ids, (30, 1130),
-                cv2.FONT_HERSHEY_DUPLEX, 0.8, LIGHT_GREEN_COLOR, 2)
+    #
+    # cv2.putText(frame_out, 'Scenario #%d Run #%d Frame %d' %(scn_nbr, run_nbr, frame_id), (30, 60),
+    #             cv2.FONT_HERSHEY_SIMPLEX, 0.9, LIGHT_RED_COLOR, 2)
+    # cv2.putText(frame_out, 'selected IDs=%s' %selected_ids, (30, 200),
+    #             cv2.FONT_HERSHEY_DUPLEX, 0.8, LIGHT_BLUE_COLOR, 2)
+    # cv2.putText(frame_out, 'Total Out= %d' % validCount(), (30, 1000),
+    #             cv2.FONT_HERSHEY_SIMPLEX, 1.6, MAGENTA_COLOR, 5)
+    # cv2.putText(frame_out, 'confirmed IDs=%s' % confirmed_ids, (30, 1130),
+    #             cv2.FONT_HERSHEY_DUPLEX, 0.8, LIGHT_GREEN_COLOR, 2)
     # =========================================================
 
-    # Display the resulting frame
-    # cv2.imshow('frame_in', frame_in)
     cv2.imshow('frame_out', frame_out)
+    cv2.imshow('raw_frame', raw_frame)
     key = cv2.waitKeyEx(30)
     if key != -1:
         # print(key)
@@ -328,6 +313,9 @@ while True:
         break
     elif key == 32:  # space
         pause = not pause
+    elif key & 0xFF == ord('s'):
+        cv2.imwrite(main_dir + '/raw_frame_S%d-R%d-F%d.png' %(scn_nbr, run_nbr, frame_id), raw_frame)
+        cv2.imwrite(main_dir + '/final_frame_S%d-R%d-F%d.png' %(scn_nbr, run_nbr, frame_id), warp_frame)
     elif key == RIGHT_ARROW_KEY:
         pause = True
         if frame_id < int(cap.get(cv2.CAP_PROP_FRAME_COUNT))-1:
